@@ -2,4 +2,4 @@
 
 ## CSPM files
 
-[README](./cspm/ README.md)
+[CSPM Readme file](cspm/README.md)
