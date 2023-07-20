@@ -10,16 +10,6 @@ Metadata:
     ParameterLabels:
       UptycsSecretName:
         default: "The name of the secret created by QuickLaunch"
-#      UptycsAPIKey:
-#        default: "The Uptycs API Key value from your credentials file"
-#      UptycsCustomerId:
-#        default: "The Uptycs API Customer ID value from your credentials file"
-#      UptycsDomain:
-#        default: "The Uptycs API Domain value from your credentials file"
-#      UptycsDomainSuffix:
-#        default: "The Uptycs API Domain suffix"
-#      UptycsAccountId:
-#        default: "The Uptycs Account (Do not change unless instructed to do so)"
       UptycsRoleName:
         default: "The name of the Role that Uptycs will assume in your account"
       PermissionsBoundary:
@@ -45,11 +35,6 @@ Metadata:
           default: "Uptycs API Permissions"
         Parameters:
           - UptycsSecretName
-#          - UptycsAPIKey
-#          - UptycsSecret
-#          - UptycsCustomerId
-#          - UptycsDomain
-#          - UptycsDomainSuffix
       - Label:
           default: Log Archive Account Parameters
         Parameters:
@@ -81,31 +66,6 @@ Parameters:
     Description: Uptycs API Key Secret Name
     Type: String
     Default: 'uptycs-api-secrets'
-#  UptycsAPIKey:
-#    Description: Uptycs API Key
-#    Type: String
-#    NoEcho: True
-#    Default: EBNBT7OLWR5XRKTCYIIZVTJ22ENNXZCJ
-#  UptycsSecret:
-#    Description: Uptycs API Secret
-#    Type: String
-#    NoEcho: True
-#    Default: eaKNTt2TIwbfXnskvHlpGA8t0dcAJ0V2OAxG7OSq8ke7t+qFHS+fIuUIg1fyYlgs
-#  UptycsCustomerId:
-#    Description: Uptycs API CustomerId
-#    Type: String
-#    NoEcho: True
-#    Default: 3673a4d8-99d2-4d69-a784-858cdfd7fdb7
-#  UptycsDomain:
-#    Description: Uptycs Domain
-#    Type: String
-#    NoEcho: True
-#    Default: cloudint
-#  UptycsDomainSuffix:
-#    Description: Uptycs Domain
-#    Type: String
-#    NoEcho: True
-#    Default: '.uptycs.io'
   UptycsAccountId:
     Description: Aws account id of Uptycs
     Type: String
@@ -136,19 +96,15 @@ Parameters:
   CloudTrailAccount:
     Type: String
     Description: Name of your cloudtrail bucket
-    Default: 004881111746
   CloudTrailBucketName:
     Type: String
     Description: Name of your cloudtrail bucket
-    Default: aws-controltower-logs-004881111746-eu-west-1
   CloudTrailBucketRegion:
     Type: String
     Description: Cloudtrail bucket region
-    Default: eu-west-1
   CloudTrailBucketLogPrefix:
     Type: String
     Description: Cloudtrail bucket region
-    Default: 'o-m74320e6qa'
   KMSKeyArn:
     Description: SSE-KMS Arn .
     Default: ''
@@ -160,13 +116,10 @@ Parameters:
 
 Conditions:
   PermissionsBoundary: !Not [ !Equals [ !Ref PermissionsBoundary, '' ] ]
-#  CreateSecret: !Not [ !Equals [ !Ref UptycsSecretName, '' ] ]
-
 Resources:
   UptycsRegistrationLambda:
     Type: AWS::Lambda::Function
     DependsOn:
-#    - WriteSecretToSecretsManagerCustomResource
     - UptycsSetupCustomResource
     Properties:
       Code:
@@ -379,7 +332,9 @@ Resources:
           Id: AccountFunctionTarget
 
 
-  UptycsAccountFunction: # the account function deploys the stackset cloudformation template that allows Uptycs to get cross account access to read AWS audit logs and config
+  UptycsAccountFunction:
+    # the account function deploys the stackset cloudformation template that allows Uptycs to
+    # get cross account access to read config information
     Type: AWS::Lambda::Function
     DependsOn: CopyZips
     Properties:
@@ -408,7 +363,7 @@ Resources:
       Principal: sns.amazonaws.com
       SourceArn: !Ref UptycsAccountSNS
 
-  UptycsAccountSNSSubscription: # stackset function subscribes to new SNS messages
+  UptycsAccountSNSSubscription: # Account function subscribes to new SNS messages
     Type: AWS::SNS::Subscription
     Properties:
       Endpoint: !GetAtt UptycsAccountFunction.Arn
@@ -418,183 +373,18 @@ Resources:
   UptycsDLQ: # dead letter queue
     Type: AWS::SQS::Queue
     Properties:
-      MessageRetentionPeriod: 1209600
-#
-# Secrets manager setup - Not required
-#
-#  WriteSecretToSecretsManagerCustomResource:
-#    Condition: CreateSecret
-#    Type: Custom::WriteSecretToSecretsManager
-#    Properties:
-#      ServiceToken: !GetAtt WriteSecretToSecretsManagerLambda.Arn
-#      parameter_name: !Ref UptycsSecretName
-#      SecretData:
-#        key: !Ref UptycsAPIKey
-#        secret: !Ref UptycsSecret
-#        customerId: !Ref UptycsCustomerId
-#        domain: !Ref UptycsDomain
-#        domainSuffix: !Ref UptycsDomainSuffix
-#        uptycs_role_name: !Ref UptycsRoleName
-#        uptycs_account_id: !Ref UptycsAccountId
-#  WriteParameterExecutionRole:
-#    Condition: CreateSecret
-#    Type: "AWS::IAM::Role"
-#    Properties:
-#      PermissionsBoundary:
-#        Fn::If:
-#          - PermissionsBoundary
-#          - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}'
-#          - Ref: AWS::NoValue
-#      AssumeRolePolicyDocument:
-#        Version: "2012-10-17"
-#        Statement:
-#          - Effect: "Allow"
-#            Principal:
-#              Service: "lambda.amazonaws.com"
-#            Action: "sts:AssumeRole"
-#      Path: "/"
-#      ManagedPolicyArns:
-#        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-#      Policies:
-#        - PolicyName: "SecretsManager"
-#          PolicyDocument:
-#            Version: "2012-10-17"
-#            Statement:
-#              - Sid: WriteSecret
-#                Effect: Allow
-#                Action:
-#                  - secretsmanager:GetSecretValue
-#                  - secretsmanager:DescribeSecret
-#                  - secretsmanager:PutSecretValue
-#                  - secretsmanager:CreateSecret
-#                  - secretsmanager:DeleteSecret
-#                  - secretsmanager:UpdateSecret
-#                Resource: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${UptycsSecretName}*
-#
-#  WriteSecretToSecretsManagerLambda:
-#    Condition: CreateSecret
-#    Type: AWS::Lambda::Function
-#    Properties:
-#      Handler: index.lambda_handler
-#      MemorySize: 512
-#      Runtime: python3.8
-#      Role: !GetAtt WriteParameterExecutionRole.Arn
-#      Timeout: 20
-#      Code:
-#        ZipFile: |
-#          import boto3
-#          import cfnresponse
-#          from botocore.exceptions import ClientError
-#          import logging
-#          import json
-#          import uuid
-#
-#          logger = logging.getLogger()
-#          logger.setLevel(logging.INFO)
-#          response_data = {}
-#
-#          class SecretsManagerClient:
-#              def __init__(self, secret_name: str):
-#                  self.secrets_client = boto3.client('secretsmanager')
-#                  self.secret_name = secret_name
-#
-#              def create_or_update_secret(self, secret_value: str) -> dict:
-#                  try:
-#                      response = self.secrets_client.create_secret(
-#                          Name=self.secret_name,
-#                          SecretString=secret_value
-#                      )
-#                  except self.secrets_client.exceptions.ResourceExistsException:
-#                      response = self.secrets_client.update_secret(
-#                          SecretId=self.secret_name,
-#                          SecretString=secret_value
-#                      )
-#
-#                  return response
-#
-#              def delete_secret(self) -> dict:
-#                  response = self.secrets_client.delete_secret(
-#                      SecretId=self.secret_name,
-#                      ForceDeleteWithoutRecovery=True
-#                  )
-#                  return response
-#
-#
-#          def generate_uuid():
-#              return str(uuid.uuid4())
-#
-#
-#          def lambda_handler(event, context):
-#              secret_name = event['ResourceProperties']['secret_name']
-#              status = cfnresponse.SUCCESS
-#              secret = SecretsManagerClient(secret_name)
-#              if event['RequestType'] == 'Create' or event['RequestType'] == 'Update':
-#                  try:
-#                      external_id = generate_uuid()
-#                      logger.info('EVENT Received: {}'.format(event))
-#                      secret_data = event['ResourceProperties']['SecretData']
-#                      secret_data["external_id"] = external_id
-#                      response = secret.create_or_update_secret(
-#                          json.dumps(secret_data)
-#                      )
-#                      status = response['ResponseMetadata']['HTTPStatusCode']
-#                      if status == 200:
-#                          logger.info('Created parameter version {}'.format(response.get('Version')))
-#                          response_data = {
-#                              'Status': 'SUCCESS',
-#                              'external_id': external_id,
-#                              'Reason': 'Created Parameter',
-#                              'Data': {'Version': response.get('Version')}
-#                          }
-#                  except ClientError as client_error:
-#                      logger.info('Client Exception {}'.format(client_error))
-#                      response_data = {
-#                          'Status': 'FAILED',
-#                          'Data': {'Got client error {}'.format(client_error)}
-#                      }
-#                      status = cfnresponse.FAILED
-#                  except Exception as error:
-#                      response_data = {
-#                          'Status': 'FAILED',
-#                          'Data': {'`UptycsSecretName': secret_name}
-#                      }
-#                      logger.info('Error Received: {}'.format(error))
-#                      status = cfnresponse.FAILED
-#                  finally:
-#                      cfnresponse.send(event, context, status, response_data)
-#                      return {'ExternalId': external_id}
-#
-#
-#              elif event['RequestType'] == 'Delete':
-#                  try:
-#                      response = secret.delete_secret()
-#                      status = response['ResponseMetadata']['HTTPStatusCode']
-#                      if status == 200:
-#                          logger.info('Deleted Parameter')
-#                          response_data = {
-#                              'Status': 'SUCCESS'}
-#                  except ClientError as client_error:
-#                      logger.info('Client Exception {}'.format(client_error))
-#                      response_data = {
-#                          'Status': 'FAILED',
-#                          'Data': {'Got client error {}'.format(client_error)}
-#                      }
-#
-#                  except Exception as error:
-#                      response_data = {
-#                          'Status': 'FAILED',
-#                          'Data': {'Got general error'}
-#                      }
-#                      logger.info('Failed to delete parameter')
-#                  finally:
-#                      cfnresponse.send(event, context, status, response_data)
-
+      MessageRetentionPeriod: 345600
   UptycsSetupCustomResource:
     Type: Custom::UptycsSetupCustomResource
     Properties:
       ServiceToken: !GetAtt UptycsSetupLambdaFunction.Arn
 
-  UptycsSetupLambdaFunction: # Create the StackSet resource
+  UptycsSetupLambdaFunction:
+    # Performs the initial setup.
+    # Creates the role in the master account.
+    # Creates a list of accounts that require the role to be pushed to immediately
+    # Publishes the list of accounts to the SNS topic where the account function will take
+    # care of the stackset management
     Type: AWS::Lambda::Function
     DependsOn: CopyZips
     Properties:
@@ -696,10 +486,6 @@ Resources:
             Action:
               - secretsmanager:GetSecretValue
               - secretsmanager:DescribeSecret
-#              - secretsmanager:PutSecretValue
-#              - secretsmanager:CreateSecret
-#              - secretsmanager:DeleteSecret
-#              - secretsmanager:UpdateSecret
             Resource: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${UptycsSecretName}*
           - Sid: OrgAccounts
             Effect: Allow
