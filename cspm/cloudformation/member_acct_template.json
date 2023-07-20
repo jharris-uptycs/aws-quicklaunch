@@ -1,0 +1,120 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Metadata": {
+    "cfn-lint": {
+      "config": {
+        "ignore_checks": [
+          "E9008"
+        ]
+      }
+    },
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": {
+            "default": "Uptycs Role Parameters"
+          },
+          "Parameters": [
+            "ExternalId",
+            "UptycsRoleName"
+          ]
+        },
+        {
+          "Label": {
+            "default": "Permissions Boundary Info"
+          },
+          "Parameters": [
+            "PermissionsBoundary"
+          ]
+        }
+      ],
+      "ParameterLabels": {
+        "UptycsAccountId": {
+                    "default": "The Uptycs Account from which the role is assumed (Only change for dev testing)"
+        },
+        "UptycsRoleName": {
+          "default": "The Rolename assumed by Uptycs"
+        },
+        "ExternalId": {
+          "default": "The ExternalId used by Uptycs to Assume this role"
+        },
+        "PermissionsBoundary": {
+          "default": "The name of the permisssions boundary to apply to IAM roles"
+        }
+      }
+    }
+  },
+  "Parameters": {
+    "UptycsAccountId": {
+      "Description": "Aws account id of Uptycs",
+      "Type": "String",
+      "Default": "031552911331"
+    },
+    "ExternalId": {
+      "Description": "ExternalId to be used for API authentication.",
+      "Type": "String"
+    },
+    "UptycsRoleName": {
+      "Type": "String",
+      "Description": "Name for Uptycs CSPM Reader Role",
+      "Default": "UptycsIntegrationRole"
+    },
+    "PermissionsBoundary": {
+      "Type": "String",
+      "Default": ""
+    }
+  },
+  "Conditions": {
+    "PermissionsBoundary": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "PermissionsBoundary"
+            },
+            ""
+          ]
+        }
+      ]
+    }
+  },
+  "Resources": {
+    "UptycsIntegrationRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": {
+          "Ref": "UptycsRoleName"
+        },
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+              {
+                  "Effect": "Allow",
+                  "Principal": {
+                      "AWS": {
+                        "Fn::Sub": "arn:aws:iam::${UptycsAccountId}:user/AWS-API-User-PROD"
+                      }
+                  },
+                  "Action": "sts:AssumeRole",
+                  "Condition": {
+                      "StringEquals": {
+                          "sts:ExternalId": {
+                            "Ref": "ExternalId"
+                          }
+                      }
+                  }
+              }
+          ]
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/job-function/ViewOnlyAccess"
+          },
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/SecurityAudit"
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+if __name__ == '__main__':
+    event = {
+        "RequestType": "Create",
+        "ResponseURL": "http://pre-signed-S3-url-for-response",
+        "StackId": "arn:aws:cloudformation:us-east-1:123456789012:stack/MyStack/guid",
+        "RequestId": "unique id for this create request",
+        "ResourceType": "Custom::TestResource",
+        "LogicalResourceId": "MyTestResource",
+        "ResourceProperties": {
+            "role_name" : 'UptycsIntegrationRole',
+            "ctaccount" : '004881111746',
+            "ctprefix" : 'o-m74320e6qa',
+            "ctbucket" : 'aws-controltower-s3-access-logs-004881111746-eu-west-1',
+            "ctregion" : 'eu-west-1'
+        }
+    }
+    context = ()
+    lambda_handler(event, context)
+
